@@ -37,5 +37,6 @@ jobs:
             ghcr.io/maximbacar/producer/webapp:${{ github.sha }}
           build-args: |
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_FIREBASE_CONFIG=${{ secrets.NEXT_PUBLIC_FIREBASE_CONFIG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
