@@ -1,34 +1,21 @@
 import asyncio
-import os
 import uuid
-from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Response, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from google.cloud.firestore import SERVER_TIMESTAMP
-from google.cloud.storage.blob import Blob
 
 from audio.services import analyze_bpm, analyze_key
 from beats.schemas import CreateBeatResponse
+from beats.services import run_video_job, storage_download_url
 from firebase_admin_app import get_bucket, get_firestore, verify_token
 from utils import _require_audio, _suffix
 from video.models import Job
 from video.router import jobs
-from video.services import generate_video
 
 router = APIRouter(prefix="/beats")
 _bearer = HTTPBearer()
-
-
-def _storage_download_url(blob: Blob) -> str:
-    """Return a permanent Firebase Storage download URL (token-based, no expiry)."""
-    token = str(uuid.uuid4())
-    blob.metadata = {"firebaseStorageDownloadTokens": token}
-    blob.patch()
-    bucket = blob.bucket.name
-    path = quote(blob.name, safe="")
-    return f"https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media&token={token}"
 
 
 def _get_uid(creds: HTTPAuthorizationCredentials = Depends(_bearer)) -> str:
@@ -58,7 +45,7 @@ async def create_beat(
     bucket = get_bucket()
     blob = bucket.blob(f"users/{uid}/beats/{beat_id}/audio{suffix}")
     blob.upload_from_string(audio_bytes, content_type=audio.content_type or "audio/mpeg")
-    audio_url = _storage_download_url(blob)
+    audio_url = storage_download_url(blob)
 
     db = get_firestore()
     db.collection("users").document(uid).collection("beats").document(beat_id).set({
@@ -116,43 +103,9 @@ async def beat_generate_video(
         "updatedAt": SERVER_TIMESTAMP,
     })
 
-    def _run() -> None:
-        job.status = "processing"
-        try:
-            path = generate_video(
-                image_data, image_suffix, audio_data, audio_suffix,
-                lambda pct: setattr(job, "progress", pct),
-            )
-            job.progress = 100
-            job.output_path = path
-
-            bucket = get_bucket()
-            blob = bucket.blob(f"users/{uid}/beats/{beat_id}/video.mp4")
-            with open(path, "rb") as f:
-                blob.upload_from_file(f, content_type="video/mp4")
-            os.unlink(path)
-
-            video_url = _storage_download_url(blob)
-
-            beat_ref.update({
-                "videoStorageUrl": video_url,
-                "is_generating": False,
-                "video_job_id": None,
-                "updatedAt": SERVER_TIMESTAMP,
-            })
-            job.status = "done"
-        except Exception as exc:
-            import traceback
-            traceback.print_exc()
-            job.error = repr(exc)
-            job.status = "failed"
-            beat_ref.update({
-                "is_generating": False,
-                "video_job_id": None,
-                "updatedAt": SERVER_TIMESTAMP,
-            })
-
-    background_tasks.add_task(_run)
+    background_tasks.add_task(
+        run_video_job, job, beat_ref, uid, beat_id, image_data, image_suffix, audio_data, audio_suffix,
+    )
     return {"job_id": job.id}
 
 

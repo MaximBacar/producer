@@ -1,7 +1,10 @@
+import logging
 import os
 import subprocess
 import tempfile
 from collections.abc import Callable
+
+log = logging.getLogger(__name__)
 
 
 def _get_duration(path: str) -> float:
@@ -36,11 +39,13 @@ def generate_video(
 
     try:
         duration = _get_duration(tmp_audio)
+        log.info("audio duration=%.2fs  image=%s  audio=%s", duration, image_suffix, audio_suffix)
 
         # Step 1: encode video frames only — 5%→65%
+        log.info("step 1: encoding video frames")
         _run_ffmpeg([
             "ffmpeg", "-y", "-progress", "pipe:1", "-loglevel", "warning",
-            "-loop", "1", "-i", tmp_image,
+            "-loop", "1", "-r", "1/10", "-i", tmp_image,
             "-t", str(duration),
             "-vf",
             "scale=1280:720:force_original_aspect_ratio=decrease,"
@@ -55,7 +60,9 @@ def generate_video(
             tmp_video_only,
         ], duration_s=duration, on_progress=on_progress, progress_start=5, progress_end=65)
 
+        log.info("step 1: done")
         # Step 2: mux video + audio with AAC encode — 65%→99%
+        log.info("step 2: muxing audio")
         _run_ffmpeg([
             "ffmpeg", "-y", "-progress", "pipe:1", "-loglevel", "warning",
             "-i", tmp_video_only,
@@ -76,6 +83,7 @@ def generate_video(
         if os.path.exists(tmp_video_only):
             os.unlink(tmp_video_only)
 
+    log.info("step 2: done")
     if on_progress:
         on_progress(99)
 
@@ -89,9 +97,12 @@ def _run_ffmpeg(
     progress_start: int = 0,
     progress_end: int = 100,
 ) -> None:
+    log.debug("ffmpeg cmd: %s", " ".join(cmd))
     tmp_stderr = tempfile.TemporaryFile()
     try:
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=tmp_stderr)
+        log.info("ffmpeg pid=%d started", process.pid)
+        last_pct = progress_start
         for raw in process.stdout:  # type: ignore[union-attr]
             if on_progress and duration_s > 0:
                 line = raw.decode(errors="ignore").strip()
@@ -100,14 +111,21 @@ def _run_ffmpeg(
                         us = int(line.split("=", 1)[1])
                         if us > 0:
                             pct = min(1.0, us / (duration_s * 1_000_000))
-                            on_progress(int(progress_start + pct * (progress_end - progress_start)))
+                            new_pct = int(progress_start + pct * (progress_end - progress_start))
+                            if new_pct != last_pct:
+                                log.info("ffmpeg progress %d%%", new_pct)
+                                last_pct = new_pct
+                            on_progress(new_pct)
                     except ValueError:
                         pass
         process.wait()
+        log.info("ffmpeg pid=%d exited rc=%d", process.pid, process.returncode)
+        tmp_stderr.seek(0)
+        stderr_out = tmp_stderr.read().decode(errors="ignore").strip()
+        if stderr_out:
+            log.warning("ffmpeg stderr: %s", stderr_out[-800:])
         if process.returncode != 0:
-            tmp_stderr.seek(0)
-            msg = tmp_stderr.read().decode(errors="ignore")[-400:]
-            raise RuntimeError(f"ffmpeg exited {process.returncode}: {msg}")
+            raise RuntimeError(f"ffmpeg exited {process.returncode}: {stderr_out[-400:]}")
     finally:
         tmp_stderr.close()
 
