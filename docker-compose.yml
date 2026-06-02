@@ -1,0 +1,45 @@
+name: producer
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - internal
+    volumes:
+      - redis_data:/data
+
+  api:
+    build:
+      context: ./api
+    restart: unless-stopped
+    networks:
+      - internal
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    env_file:
+      - .env.local
+    environment:
+      - REDIS_URL=redis://redis:6379
+
+  frontend:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    restart: unless-stopped
+    networks:
+      - internal
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  redis_data:
