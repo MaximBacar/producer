@@ -58,6 +58,15 @@ export async function generateBeatVideo(
     return apiCall(() => apiClient.post(`/beats/${beatId}/generate-video`, form))
 }
 
+export async function generateBeatVideoFromYoutube(
+    beatId: string,
+    youtubeUrl: string,
+): Promise<{ job_id: string }> {
+    return apiCall(() =>
+        apiClient.post(`/beats/${beatId}/generate-video-dynamic`, { youtube_url: youtubeUrl })
+    )
+}
+
 export async function deleteBeat(beatId: string): Promise<void> {
     await apiClient.delete(`/beats/${beatId}`)
 }

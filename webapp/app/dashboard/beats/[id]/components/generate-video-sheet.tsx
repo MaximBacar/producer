@@ -1,6 +1,6 @@
 'use client'
 
-import { ImageIcon, Link2, Loader2, Upload } from 'lucide-react'
+import { Clapperboard, ImageIcon, Link2, Loader2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -12,12 +12,14 @@ interface GenerateVideoSheetProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     beatName: string
-    imageMode: 'file' | 'url'
-    onImageModeChange: (mode: 'file' | 'url') => void
+    imageMode: 'file' | 'url' | 'youtube'
+    onImageModeChange: (mode: 'file' | 'url' | 'youtube') => void
     imageFile: File | null
     onImageFileChange: (file: File | null) => void
     imageUrl: string
     onImageUrlChange: (url: string) => void
+    youtubeUrl: string
+    onYoutubeUrlChange: (url: string) => void
     imagePreview: string | null
     imageDragging: boolean
     onImageDraggingChange: (v: boolean) => void
@@ -31,6 +33,7 @@ export function GenerateVideoSheet({
     imageMode, onImageModeChange,
     imageFile, onImageFileChange,
     imageUrl, onImageUrlChange,
+    youtubeUrl, onYoutubeUrlChange,
     imagePreview,
     imageDragging, onImageDraggingChange,
     submitting, error, onSubmit,
@@ -41,7 +44,7 @@ export function GenerateVideoSheet({
                 <SheetHeader>
                     <SheetTitle>Generate Video</SheetTitle>
                     <SheetDescription>
-                        Upload cover art to create a YouTube video for "{beatName || 'Untitled'}"
+                        Choose cover art or a YouTube music video to generate a video for "{beatName || 'Untitled'}"
                     </SheetDescription>
                 </SheetHeader>
 
@@ -52,7 +55,7 @@ export function GenerateVideoSheet({
                             variant={imageMode === 'file' ? 'secondary' : 'ghost'}
                             size="sm"
                             className="flex-1 h-7 text-xs"
-                            onClick={() => { onImageModeChange('file'); onImageUrlChange('') }}
+                            onClick={() => { onImageModeChange('file'); onImageUrlChange(''); onYoutubeUrlChange('') }}
                         >
                             <Upload className="size-3" /> Upload
                         </Button>
@@ -60,9 +63,17 @@ export function GenerateVideoSheet({
                             variant={imageMode === 'url' ? 'secondary' : 'ghost'}
                             size="sm"
                             className="flex-1 h-7 text-xs"
-                            onClick={() => { onImageModeChange('url'); onImageFileChange(null) }}
+                            onClick={() => { onImageModeChange('url'); onImageFileChange(null); onYoutubeUrlChange('') }}
                         >
                             <Link2 className="size-3" /> URL
+                        </Button>
+                        <Button
+                            variant={imageMode === 'youtube' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => { onImageModeChange('youtube'); onImageFileChange(null); onImageUrlChange('') }}
+                        >
+                            <Clapperboard className="size-3" /> Music Video
                         </Button>
                     </div>
 
@@ -133,6 +144,25 @@ export function GenerateVideoSheet({
                         </div>
                     )}
 
+                    {/* YouTube URL input */}
+                    {imageMode === 'youtube' && (
+                        <div className="space-y-3">
+                            <div className="relative">
+                                <Clapperboard className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+                                <Input
+                                    type="url"
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                    value={youtubeUrl}
+                                    onChange={(e) => onYoutubeUrlChange(e.target.value)}
+                                    className="pl-9"
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Paste a YouTube music video URL. Scene clips will be extracted and synced to your beat.
+                            </p>
+                        </div>
+                    )}
+
                     {error && <p className="text-sm text-destructive">{error}</p>}
                 </div>
 
@@ -148,7 +178,11 @@ export function GenerateVideoSheet({
                     <Button
                         className="flex-1"
                         onClick={onSubmit}
-                        disabled={submitting || (imageMode === 'file' ? !imageFile : !imageUrl)}
+                        disabled={submitting || (
+                            imageMode === 'file' ? !imageFile :
+                            imageMode === 'url' ? !imageUrl :
+                            !youtubeUrl
+                        )}
                     >
                         {submitting
                             ? <><Loader2 className="mr-2 size-4 animate-spin" /> Starting…</>

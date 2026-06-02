@@ -9,7 +9,7 @@ import { db, storage } from '@/lib/firebase'
 import { useAuth } from '@/lib/auth-context'
 import type { BeatDoc } from '@/lib/beats'
 import { buildDescription, buildTitle, formatArtists } from '@/lib/beats'
-import { deleteBeat, generateBeatVideo, getVideoStatus } from '@/lib/api'
+import { deleteBeat, generateBeatVideo, generateBeatVideoFromYoutube, getVideoStatus } from '@/lib/api'
 import { BeatPlayer } from '@/components/beat-player'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChevronLeft, Trash2 } from 'lucide-react'
@@ -83,9 +83,10 @@ export default function BeatDetailPage() {
 
     // ── Sheet ─────────────────────────────────────────────────────────────────
     const [sheetOpen, setSheetOpen] = useState(false)
-    const [sheetImageMode, setSheetImageMode] = useState<'file' | 'url'>('file')
+    const [sheetImageMode, setSheetImageMode] = useState<'file' | 'url' | 'youtube'>('file')
     const [sheetImageFile, setSheetImageFile] = useState<File | null>(null)
     const [sheetImageUrl, setSheetImageUrl] = useState('')
+    const [sheetYoutubeUrl, setSheetYoutubeUrl] = useState('')
     const [sheetImagePreview, setSheetImagePreview] = useState<string | null>(null)
     const [sheetImageDragging, setSheetImageDragging] = useState(false)
     const [sheetSubmitting, setSheetSubmitting] = useState(false)
@@ -159,7 +160,10 @@ export default function BeatDetailPage() {
                     clearInterval(pollRef.current!)
                     setVideoPhase({ phase: 'failed', error: result.error ?? 'Generation failed.' })
                 }
-            } catch {
+            } catch (e: unknown) {
+                // 503 = Redis temporarily unavailable — keep polling
+                const status = (e as { response?: { status?: number } })?.response?.status
+                if (status === 503) return
                 clearInterval(pollRef.current!)
                 setVideoPhase({ phase: 'failed', error: 'Job no longer available. Please try again.' })
             }
@@ -242,24 +246,33 @@ export default function BeatDetailPage() {
         setSheetError(null)
         setSheetSubmitting(true)
         try {
-            let imageFile: File | null = null
-            if (sheetImageMode === 'url') {
-                if (!sheetImageUrl) { setSheetError('Please provide a cover image URL.'); return }
-                const res = await fetch(`http://localhost:8000/image/proxy?url=${encodeURIComponent(sheetImageUrl)}`)
-                if (!res.ok) throw new Error('Failed to fetch image.')
-                const blob = await res.blob()
-                const ext = blob.type.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg'
-                imageFile = new File([blob], `cover.${ext}`, { type: blob.type })
-            } else {
-                imageFile = sheetImageFile
-            }
-            if (!imageFile) { setSheetError('Please provide a cover image.'); return }
+            let job_id: string
 
-            const { job_id } = await generateBeatVideo(id, imageFile)
+            if (sheetImageMode === 'youtube') {
+                if (!sheetYoutubeUrl) { setSheetError('Please provide a YouTube URL.'); return }
+                const result = await generateBeatVideoFromYoutube(id, sheetYoutubeUrl)
+                job_id = result.job_id
+            } else {
+                let imageFile: File | null = null
+                if (sheetImageMode === 'url') {
+                    if (!sheetImageUrl) { setSheetError('Please provide a cover image URL.'); return }
+                    const res = await fetch(`http://localhost:8000/image/proxy?url=${encodeURIComponent(sheetImageUrl)}`)
+                    if (!res.ok) throw new Error('Failed to fetch image.')
+                    const blob = await res.blob()
+                    const ext = blob.type.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg'
+                    imageFile = new File([blob], `cover.${ext}`, { type: blob.type })
+                } else {
+                    imageFile = sheetImageFile
+                }
+                if (!imageFile) { setSheetError('Please provide a cover image.'); return }
+                const result = await generateBeatVideo(id, imageFile)
+                job_id = result.job_id
+            }
 
             setSheetOpen(false)
             setSheetImageFile(null)
             setSheetImageUrl('')
+            setSheetYoutubeUrl('')
             setVideoPhase({ phase: 'generating', jobId: job_id, progress: 5, statusText: 'Queued…' })
         } catch (e) {
             setSheetError(e instanceof Error ? e.message : 'Failed to start generation.')
@@ -468,6 +481,8 @@ export default function BeatDetailPage() {
                 onImageFileChange={setSheetImageFile}
                 imageUrl={sheetImageUrl}
                 onImageUrlChange={setSheetImageUrl}
+                youtubeUrl={sheetYoutubeUrl}
+                onYoutubeUrlChange={setSheetYoutubeUrl}
                 imagePreview={sheetImagePreview}
                 imageDragging={sheetImageDragging}
                 onImageDraggingChange={setSheetImageDragging}

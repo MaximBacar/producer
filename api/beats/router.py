@@ -7,12 +7,12 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from google.cloud.firestore import SERVER_TIMESTAMP
 
 from audio.services import analyze_bpm, analyze_key
-from beats.schemas import CreateBeatResponse
-from beats.services import run_video_job, storage_download_url
+from beats.schemas import CreateBeatResponse, GenerateDynamicVideoRequest
+from beats.services import run_dynamic_video_job, run_video_job, storage_download_url
 from firebase_admin_app import get_bucket, get_firestore, verify_token
 from utils import _require_audio, _suffix
 from video.models import Job
-from video.router import jobs
+from video.store import job_store
 
 router = APIRouter(prefix="/beats")
 _bearer = HTTPBearer()
@@ -95,7 +95,7 @@ async def beat_generate_video(
         audio_suffix = ".wav" if "wav" in ct else ".mp3"
 
     job = Job(id=str(uuid.uuid4()))
-    jobs[job.id] = job
+    await job_store.create(job)
 
     beat_ref.update({
         "is_generating": True,
@@ -104,7 +104,47 @@ async def beat_generate_video(
     })
 
     background_tasks.add_task(
-        run_video_job, job, beat_ref, uid, beat_id, image_data, image_suffix, audio_data, audio_suffix,
+        run_video_job, job.id, beat_ref, uid, beat_id, image_data, image_suffix, audio_data, audio_suffix,
+    )
+    return {"job_id": job.id}
+
+
+@router.post("/{beat_id}/generate-video-dynamic", status_code=202)
+async def beat_generate_video_dynamic(
+    beat_id: str,
+    body: GenerateDynamicVideoRequest,
+    background_tasks: BackgroundTasks,
+    uid: str = Depends(_get_uid),
+):
+    db = get_firestore()
+    beat_ref = db.collection("users").document(uid).collection("beats").document(beat_id)
+    beat_doc = beat_ref.get()
+    if not beat_doc.exists:
+        raise HTTPException(status_code=404, detail="Beat not found")
+
+    audio_url = beat_doc.to_dict().get("audioStorageUrl")
+    if not audio_url:
+        raise HTTPException(status_code=422, detail="Beat has no audio file")
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        resp = await client.get(audio_url)
+        resp.raise_for_status()
+        audio_data = resp.content
+        ct = resp.headers.get("content-type", "")
+        audio_suffix = ".wav" if "wav" in ct else ".mp3"
+
+    job = Job(id=str(uuid.uuid4()))
+    await job_store.create(job)
+
+    beat_ref.update({
+        "is_generating": True,
+        "video_job_id": job.id,
+        "updatedAt": SERVER_TIMESTAMP,
+    })
+
+    background_tasks.add_task(
+        run_dynamic_video_job, job.id, beat_ref, uid, beat_id,
+        body.youtube_url, audio_data, audio_suffix,
     )
     return {"job_id": job.id}
 
