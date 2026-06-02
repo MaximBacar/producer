@@ -1,10 +1,10 @@
 {
-  "name": "producer",
+  "name": "webapp",
   "version": "0.0.1",
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "concurrently --names \"next,api\" --prefix-colors \"cyan,magenta\" \"next dev\" \"uv run --directory api uvicorn main:app --reload --port 8000\"",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

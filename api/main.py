@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-load_dotenv(Path(__file__).parent.parent / ".env.local")
+load_dotenv()
 
 from audio.router import router as audio_router
 from beats.router import router as beats_router
