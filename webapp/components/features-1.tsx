@@ -1,66 +1,95 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Settings2, Sparkles, Zap } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Video, Zap, FolderOpen, PlaySquare, ImageIcon, Upload, Package } from 'lucide-react'
 import { ReactNode } from 'react'
+
+const liveFeatures = [
+    {
+        icon: Video,
+        title: 'Beat Video Generation',
+        description: 'Create dynamic or static beat videos from your cover art and audio in seconds — ready to post anywhere.',
+    },
+    {
+        icon: Zap,
+        title: 'Key & BPM Finder',
+        description: 'Instantly detect tempo and musical key from any sample or audio file with studio-grade accuracy.',
+    },
+    {
+        icon: FolderOpen,
+        title: 'Beat Storage',
+        description: 'Store and organize all your beats in one place. Access your catalog from anywhere, anytime.',
+    },
+    {
+        icon: PlaySquare,
+        title: 'YouTube Metadata Generator',
+        description: 'Auto-generate SEO-optimized titles, descriptions, and tags for your beats — no more blank fields.',
+    },
+]
+
+const comingFeatures = [
+    {
+        icon: ImageIcon,
+        title: 'AI Beat Cover Generator',
+        description: 'Generate genre-matched artwork automatically — girls for R&B type beats, cars and money for trap, and more.',
+    },
+    {
+        icon: Upload,
+        title: 'Auto YouTube Upload',
+        description: 'Upload your beats directly to YouTube with no watermarks, fully automated from within AutoProducer.',
+    },
+    {
+        icon: Package,
+        title: 'Drumkit & Artwork Box',
+        description: 'Generate and package drumkits with matching artwork in a single click — ready to sell or share.',
+    },
+]
 
 export default function Features() {
     return (
-        <section className="bg-zinc-50 py-16 md:py-32 dark:bg-transparent">
-            <div className="@container mx-auto max-w-5xl px-6">
+        <section className="bg-muted/40 py-16 md:py-32 dark:bg-muted/10">
+            <div className="mx-auto max-w-6xl px-6">
                 <div className="text-center">
-                    <h2 className="text-balance text-4xl font-semibold lg:text-5xl">Tools built for producers</h2>
-                    <p className="mt-4 text-muted-foreground">Everything you need to analyze your tracks and share them professionally.</p>
+                    <h2 className="text-balance text-4xl font-semibold lg:text-5xl">Everything your workflow needs</h2>
+                    <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
+                        AutoProducer handles the time-consuming parts of music production so you can focus on making music.
+                    </p>
                 </div>
-                <div className="@min-4xl:max-w-full @min-4xl:grid-cols-3 mx-auto mt-8 grid max-w-sm gap-6 *:text-center md:mt-16">
-                    <Card className="group shadow-zinc-950/5">
-                        <CardHeader className="pb-3">
-                            <CardDecorator>
-                                <Zap
-                                    className="size-6"
-                                    aria-hidden
-                                />
-                            </CardDecorator>
 
-                            <h3 className="mt-6 font-medium">BPM Detection</h3>
-                        </CardHeader>
+                {/* Live features */}
+                <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4 md:mt-16">
+                    {liveFeatures.map((feature) => (
+                        <Card key={feature.title} className="group shadow-sm text-center">
+                            <CardHeader className="pb-3">
+                                <CardDecorator>
+                                    <feature.icon className="size-6" aria-hidden />
+                                </CardDecorator>
+                                <h3 className="mt-6 font-medium">{feature.title}</h3>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground">{feature.description}</p>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
 
-                        <CardContent>
-                            <p className="text-sm">Instantly detect the tempo of any audio file with studio-grade accuracy.</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="group shadow-zinc-950/5">
-                        <CardHeader className="pb-3">
-                            <CardDecorator>
-                                <Settings2
-                                    className="size-6"
-                                    aria-hidden
-                                />
-                            </CardDecorator>
-
-                            <h3 className="mt-6 font-medium">Key Analysis</h3>
-                        </CardHeader>
-
-                        <CardContent>
-                            <p className="mt-3 text-sm">Automatically identify the musical key and scale of your track.</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="group shadow-zinc-950/5">
-                        <CardHeader className="pb-3">
-                            <CardDecorator>
-                                <Sparkles
-                                    className="size-6"
-                                    aria-hidden
-                                />
-                            </CardDecorator>
-
-                            <h3 className="mt-6 font-medium">Beat Videos</h3>
-                        </CardHeader>
-
-                        <CardContent>
-                            <p className="mt-3 text-sm">Generate shareable video content from your cover art and audio in seconds.</p>
-                        </CardContent>
-                    </Card>
+                {/* Coming soon features */}
+                <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {comingFeatures.map((feature) => (
+                        <Card key={feature.title} className="group shadow-sm text-center border-dashed opacity-80">
+                            <CardHeader className="pb-3">
+                                <CardDecorator>
+                                    <feature.icon className="size-6" aria-hidden />
+                                </CardDecorator>
+                                <div className="mt-4 flex justify-center">
+                                    <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+                                </div>
+                                <h3 className="mt-2 font-medium">{feature.title}</h3>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground">{feature.description}</p>
+                            </CardContent>
+                        </Card>
+                    ))}
                 </div>
             </div>
         </section>
@@ -68,12 +97,11 @@ export default function Features() {
 }
 
 const CardDecorator = ({ children }: { children: ReactNode }) => (
-    <div className="mask-radial-from-40% mask-radial-to-60% relative mx-auto size-36 duration-200 [--color-border:color-mix(in_oklab,var(--color-zinc-950)10%,transparent)] group-hover:[--color-border:color-mix(in_oklab,var(--color-zinc-950)20%,transparent)] dark:[--color-border:color-mix(in_oklab,var(--color-white)15%,transparent)] dark:group-hover:[--color-border:color-mix(in_oklab,var(--color-white)20%,transparent)]">
+    <div className="mask-radial-from-40% mask-radial-to-60% relative mx-auto size-36 duration-200 [--color-border:color-mix(in_oklab,var(--color-foreground)10%,transparent)] group-hover:[--color-border:color-mix(in_oklab,var(--color-foreground)20%,transparent)]">
         <div
             aria-hidden
-            className="absolute inset-0 bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] bg-[size:24px_24px] dark:opacity-50"
+            className="absolute inset-0 bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] bg-[size:24px_24px] opacity-60"
         />
-
-        <div className="bg-background absolute inset-0 m-auto flex size-12 items-center justify-center border-l border-t">{children}</div>
+        <div className="bg-background absolute inset-0 m-auto flex size-12 items-center justify-center border-l border-t text-primary">{children}</div>
     </div>
 )

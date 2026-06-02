@@ -6,15 +6,15 @@ export default function CallToAction() {
         <section className="py-16 md:py-32">
             <div className="mx-auto max-w-5xl px-6">
                 <div className="text-center">
-                    <h2 className="text-balance text-4xl font-semibold lg:text-5xl">Ready to share your music?</h2>
-                    <p className="mt-4 text-muted-foreground">Upload your beat, analyze it, and generate a professional video — all in one place.</p>
+                    <h2 className="text-balance text-4xl font-semibold lg:text-5xl">Stop wasting time on the business side of beats.</h2>
+                    <p className="mt-4 text-muted-foreground">AutoProducer handles the admin — videos, metadata, storage — so you can focus on what matters: making music.</p>
 
                     <div className="mt-12 flex flex-wrap justify-center gap-4">
                         <Button
                             asChild
                             size="lg">
                             <Link href="/dashboard">
-                                <span>Get Started</span>
+                                <span>Get Started Free</span>
                             </Link>
                         </Button>
 
@@ -23,7 +23,7 @@ export default function CallToAction() {
                             size="lg"
                             variant="outline">
                             <Link href="#features">
-                                <span>See How It Works</span>
+                                <span>See Features</span>
                             </Link>
                         </Button>
                     </div>

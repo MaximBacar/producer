@@ -6,6 +6,10 @@ const links = [
         title: 'Features',
         href: '#features',
     },
+    {
+        title: 'Pricing',
+        href: '/pricing',
+    },
 ]
 
 export default function FooterSection() {
